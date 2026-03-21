@@ -1,0 +1,18 @@
+# Core
+pydantic>=2.7
+pydantic-ai[groq]>=0.0.14
+groq>=0.9
+
+# Simulation backend
+lenstronomy>=1.13
+numpy>=1.24
+scipy>=1.11
+astropy>=5.3
+matplotlib>=3.7
+
+# Optional — richer CLI output
+rich>=13.0
+
+# Testing
+pytest>=7.4
+pytest-asyncio>=0.23
