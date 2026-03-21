@@ -1,0 +1,35 @@
+axion images with Euclid settings, z_lens=0.4:
+Image 1 — Nearly complete Einstein ring with two symmetric bright knots at 3 and 9 o'clock. The ring is smooth and uniform — axion vortices create gentle, distributed perturbations rather than sharp hotspots.
+Image 2 — Broken arc with a bright detached blob on the left. The source is offset further, breaking the ring into two arcs. The blob is a vortex-induced magnification region.
+Image 3 — Two bright arc segments at roughly 10 o'clock and 5 o'clock with a dark gap between them. Classic quad-arc morphology caused by the combination of lens ellipticity and axion substructure.
+
+
+Model_I — Synthetic Gaussian PSF
+
+Sharpest, cleanest images of all four
+PSF is a perfect mathematical Gaussian (not real)
+Low, uniform noise
+Best for: initial ML training, understanding pure lensing features without instrument effects
+Your images above show this — very clean ring edges, deep black background
+
+Model_II — Euclid VIS
+
+Slightly blurrier than Model_I (PSF FWHM 0.18″ vs 0.12″)
+More realistic noise pattern from the Euclid instrument
+Larger pixel scale (0.1″/px) so rings look slightly softer
+Best for: preparing models for real Euclid survey data (launching now)
+
+Model_III — HST ACS/WFC
+
+Finest pixel scale (0.05″/px) — twice the resolution of Euclid
+Sharpest real-telescope PSF (0.09″) since Hubble is above the atmosphere
+Sub-halo distortions and arc fine structure are most visible
+Best for: detecting faint substructure, highest scientific precision
+Your earlier CDM/axion images were Model_III — notice how crisp the arcs were
+
+Model_IV — Euclid VIS (wide-z variant)
+
+Identical instrument to Model_II
+Only difference is wider redshift priors — lens can be at z=0.2–0.9, source up to z=3.0
+Produces more diverse Einstein ring sizes across the dataset
+Best for: training robust models that generalise across a wider range of lens configurations
