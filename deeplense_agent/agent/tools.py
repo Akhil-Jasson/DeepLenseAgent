@@ -229,6 +229,8 @@ def run_batch_simulation(
     substructure_params: Optional[dict] = None,
     random_seed: Optional[int] = None,
     add_noise: bool = True,
+    resolution: Optional[int] = None,
+    theta_E: Optional[float] = None,
     output_dir: str = "outputs",
 ) -> dict[str, Any]:
     """
@@ -276,6 +278,11 @@ def run_batch_simulation(
     except ValueError as exc:
         return {"success": False, "error": str(exc)}
 
+    # Merge theta_E into lens_params if provided at top level
+    if theta_E is not None:
+        lens_params = dict(lens_params or {})
+        lens_params["theta_E"] = theta_E
+
     try:
         batch_req = BatchSimulationRequest(
             models=model_enums,
@@ -288,6 +295,21 @@ def run_batch_simulation(
             add_noise=add_noise,
         )
         individual_reqs = batch_req.to_individual_requests()
+        # Apply resolution override to each request if specified
+        if resolution is not None:
+            valid_resolutions = [64, 128, 256]
+            if resolution not in valid_resolutions:
+                # Round to nearest valid value
+                resolution = min(valid_resolutions, key=lambda x: abs(x - resolution))
+                print(f"  ℹ️  Resolution rounded to nearest valid value: {resolution}×{resolution}")
+            individual_reqs = [
+                req.model_copy(update={
+                    "observation": req.effective_observation().model_copy(
+                        update={"num_pixels": resolution}
+                    )
+                })
+                for req in individual_reqs
+            ]
     except Exception as exc:
         msg = str(exc)
         if "Value error," in msg:

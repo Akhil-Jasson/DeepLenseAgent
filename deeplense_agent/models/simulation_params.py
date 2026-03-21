@@ -257,6 +257,10 @@ class SimulationRequest(BaseModel):
         description="RNG seed for reproducibility (None = random)",
     )
     add_noise: bool = Field(default=True, description="Whether to add detector noise")
+    resolution: Optional[int] = Field(
+        default=None,
+        description="Image size in pixels (e.g. 64, 128, 256). Overrides model default.",
+    )
 
     @model_validator(mode="after")
     def source_behind_lens(self) -> "SimulationRequest":
@@ -268,10 +272,11 @@ class SimulationRequest(BaseModel):
         return self
 
     def effective_observation(self) -> ObservationConfig:
-        """Return the observation config to use, applying model defaults."""
-        if self.observation is not None:
-            return self.observation
-        return OBSERVATION_CONFIGS[self.model]
+        """Return the observation config to use, applying model defaults and resolution override."""
+        obs = self.observation if self.observation is not None else OBSERVATION_CONFIGS[self.model]
+        if self.resolution is not None:
+            obs = obs.model_copy(update={"num_pixels": self.resolution})
+        return obs
 
 
 class BatchSimulationRequest(BaseModel):

@@ -58,6 +58,11 @@ WHEN TO ASK vs WHEN TO DEFAULT
 - substructure_type: ALWAYS ask if not mentioned
 - model/telescope: ALWAYS ask if not mentioned
 - num_images: DEFAULT to 5, never ask
+- resolution: use whatever the user provides (e.g. 128 for 128x128), DEFAULT to model default (64), never ask
+- z_lens: use if provided, otherwise RANDOMISE per image (prior 0.2–0.7)
+- z_source: use if provided, otherwise RANDOMISE per image (prior 0.5–2.5)
+- theta_E: use if provided (e.g. theta_E=1.2), otherwise RANDOMISE per image (prior 0.7–1.4)
+- add_noise: DEFAULT true, set false only if user says "no noise" or "noise-free"
 - z_lens, z_source, theta_E, noise, seed: use whatever the user provides, DEFAULT/randomise the rest
 
 RULES
@@ -122,6 +127,8 @@ def build_agent(model_name: str = "llama-3.3-70b-versatile") -> Agent:
         substructure_params: Optional[dict] = None,
         random_seed: Optional[int] = None,
         add_noise: bool = True,
+        resolution: Optional[int] = None,
+        theta_E: Optional[float] = None,
     ) -> dict:
         """Run a batch of lensing simulations across models and substructure types.
         Args:
@@ -132,7 +139,9 @@ def build_agent(model_name: str = "llama-3.3-70b-versatile") -> Agent:
             source_params: optional source parameter overrides (dict)
             substructure_params: optional substructure parameter overrides (dict)
             random_seed: integer seed for reproducibility
-            add_noise: whether to add detector noise
+            add_noise: set to false for noise-free images
+            resolution: image size in pixels e.g. 128 for 128x128 (default 64)
+            theta_E: Einstein radius in arcseconds e.g. 1.2 (default randomised)
         """
         return run_batch_simulation(
             models=models,
@@ -143,6 +152,8 @@ def build_agent(model_name: str = "llama-3.3-70b-versatile") -> Agent:
             substructure_params=substructure_params,
             random_seed=random_seed,
             add_noise=add_noise,
+            resolution=resolution,
+            theta_E=theta_E,
             output_dir=str(ctx.deps.output_dir),
         )
 

@@ -382,6 +382,12 @@ class DeepLenseSimulator:
         image_path = self._save_image(image, image_id, request)
         image_b64 = _array_to_b64_png(image)
 
+        # Save metadata JSON alongside the image
+        import json
+        meta_path = image_path.with_suffix(".json")
+        with open(meta_path, "w") as f:
+            json.dump(meta.model_dump(), f, indent=2, default=str)
+
         print(
             f"  ✅ [{request.model.value} | {request.substructure_type.value:6s}] "
             f"θ_E={meta.theta_E:.2f}\" "
@@ -410,27 +416,47 @@ class DeepLenseSimulator:
         lens = copy.copy(request.lens)
         source = copy.copy(request.source)
 
-        # Einstein radius: uniform [0.7, 1.4] arcsec
-        lens.theta_E = float(rng.uniform(0.7, 1.4))
-        # Lens ellipticity
+        # Only randomise if user hasn't explicitly set a non-default value
+        # Defaults are: theta_E=1.0, z_lens=0.5, z_source=1.5
+        if request.lens.theta_E == 1.0:
+            lens.theta_E = float(rng.uniform(0.7, 1.4))
+        # Lens ellipticity — always randomise (no meaningful user default)
         lens.e1 = float(rng.uniform(-0.2, 0.2))
         lens.e2 = float(rng.uniform(-0.2, 0.2))
         # External shear
         lens.gamma_ext = float(rng.uniform(0.0, 0.08))
         lens.psi_ext = float(rng.uniform(0.0, 180.0))
-        # Source position: random direction, avoid dead-centre
+        # Source position — always randomise
         r = float(rng.uniform(0.05, 0.25))
         angle = float(rng.uniform(0, 2 * np.pi))
         source.source_x = float(r * np.cos(angle))
         source.source_y = float(r * np.sin(angle))
-        # Redshifts within DeepLenseSim priors
-        lens.z_lens = float(rng.uniform(0.2, 0.7))
-        source.z_source = float(rng.uniform(max(lens.z_lens + 0.3, 0.5), 2.5))
+        # Redshifts — only randomise if still at defaults
+        if request.lens.z_lens == 0.5:
+            lens.z_lens = float(rng.uniform(0.2, 0.7))
+        if request.source.z_source == 1.5:
+            source.z_source = float(rng.uniform(max(lens.z_lens + 0.3, 0.5), 2.5))
 
         return request.model_copy(update={"lens": lens, "source": source})
 
     def simulate_batch(self, requests: list[SimulationRequest]) -> list[SimulationResult]:
         """Simulate a list of requests (sequentially)."""
+        if requests:
+            r0 = requests[0]
+            obs = r0.effective_observation()
+            print("\n  📋  Simulation parameters:")
+            print(f"       Model          : {r0.model.value}")
+            print(f"       Substructure   : {r0.substructure_type.value}")
+            print(f"       Num images     : {len(requests)}")
+            print(f"       Resolution     : {obs.num_pixels}×{obs.num_pixels} px {'(user specified)' if r0.resolution else '(default)'}")
+            print(f"       z_lens         : {'%.2f (user specified)' % r0.lens.z_lens if r0.lens.z_lens != 0.5 else 'randomised per image (prior 0.2–0.7)'}")
+            print(f"       z_source       : {'%.2f (user specified)' % r0.source.z_source if r0.source.z_source != 1.5 else 'randomised per image (prior 0.5–2.5)'}")
+            print(f"       θ_E            : {'%.2f\" (user specified)' % r0.lens.theta_E if r0.lens.theta_E != 1.0 else 'randomised per image (prior 0.7–1.4\")'}")
+            print(f"       Noise          : {'on' if r0.add_noise else 'off (user specified)'}")
+            # print(f"       Pixel scale    : {obs.pixel_scale}\" /px  (instrument default)")
+            # print(f"       PSF FWHM       : {obs.psf_fwhm}\"  (instrument default)")
+            print()
+
         results = []
         for i, req in enumerate(requests):
             logger.info("Simulating image %d / %d …", i + 1, len(requests))
@@ -481,9 +507,9 @@ class DeepLenseSimulator:
 
     def _save_image(self, image: np.ndarray, image_id: str, request: SimulationRequest) -> Path:
         """Save the image as a PNG with a descriptive filename."""
-        model_str = request.model.value.lower()   
-        sub_str   = request.substructure_type.value  
-        filename  = f"{model_str}_{sub_str}_{image_id}"               # e.g. model_i_cdm_3a7f2c1b
+        model_str = request.model.value.lower()                          # e.g. model_iii
+        sub_str   = request.substructure_type.value                    # e.g. cdm
+        filename  = f"{model_str}_{sub_str}_{image_id}"               # e.g. modeli_cdm_3a7f2c1b
         try:
             import matplotlib
             matplotlib.use("Agg")
