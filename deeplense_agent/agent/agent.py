@@ -38,21 +38,36 @@ lensing images. Here is the full catalogue of available configurations:
 
 WORKFLOW
 1. Parse the user request and extract any mentioned parameters.
-2. Classify the prompt:
-   - SPECIFIC: mentions both substructure_type AND model/telescope → skip to step 4
-   - VAGUE: missing substructure_type OR model → MUST do step 3 first
-3. For VAGUE prompts, write your clarifying questions DIRECTLY in your reply as
-   plain numbered text like this:
-     "Before I run the simulation, I need a few details:
-      1. Which substructure type? (no_sub, cdm, or axion)
-      2. Which telescope? (Model_I, Model_II/Euclid, Model_III/HST, Model_IV/Euclid wide-z)"
-   Do NOT call any tool here — just write the questions as plain text and STOP.
-4. Once all critical parameters are known, call tool_validate_simulation_params FIRST.
-   If it returns valid=False, respond with a clear plain-text error explaining why
-   the parameters are invalid and what the user should fix. Do NOT call any other tool.
-   If it returns valid=True, proceed to step 5.
-5. Call tool_run_batch_simulation with the validated parameters.
-6. Call tool_summarise_results and tell the user where images were saved.
+
+2. IMMEDIATELY check for physically invalid parameters BEFORE anything else:
+   - If z_source <= z_lens → reject instantly with a clear error message and STOP
+   - If theta_E < 0.1 → reject instantly and STOP
+
+3. Check for these SUBSTRUCTURE KEYWORDS in the prompt:
+   - "no_sub", "no sub", "smooth", "no substructure" → substructure_type = no_sub ✅
+   - "cdm", "cold dark matter", "subhalo", "nfw" → substructure_type = cdm ✅
+   - "axion", "axion dark matter", "vortex", "fuzzy" → substructure_type = axion ✅
+
+   Check for these MODEL KEYWORDS in the prompt:
+   - "model_i", "model i", "model 1", "gaussian psf" → model = Model_I ✅
+   - "model_ii", "model ii", "model 2", "euclid" → model = Model_II ✅
+   - "model_iii", "model iii", "model 3", "hst", "hubble" → model = Model_III ✅
+   - "model_iv", "model iv", "model 4", "euclid wide" → model = Model_IV ✅
+
+   If BOTH substructure AND model keywords found → go directly to step 5. NO QUESTIONS.
+   If substructure keyword missing → ask only: "Which substructure type? (no_sub, cdm, axion)"
+   If model keyword missing → ask only: "Which telescope? (Model_I, Model_II, Model_III, Model_IV)"
+
+4. Write ONLY the missing questions as plain numbered text and STOP. Never ask for
+   something that was already specified in the prompt.
+
+5. Call tool_validate_simulation_params. If valid=False, explain the error and STOP.
+
+6. Call tool_run_batch_simulation immediately without any preamble or description.
+
+7. Call tool_summarise_results and tell the user where images were saved.
+   Do NOT ask any follow-up questions after the simulation is complete.
+   Do NOT ask if the user wants to customise anything after images are generated.
 
 WHEN TO ASK vs WHEN TO DEFAULT
 - substructure_type: ALWAYS ask if not mentioned
@@ -77,8 +92,8 @@ RULES
 
 
 @dataclass
-class AgentDeps:
-    output_dir: Path = field(default_factory=lambda: Path("outputs"))
+class AgentDeps: 
+    output_dir: Path = field(default_factory=lambda: Path(__file__).parent.parent / "outputs")
     interactive: bool = field(default=True)
     max_clarification_rounds: int = field(default=2)
 

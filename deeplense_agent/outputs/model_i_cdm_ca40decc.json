@@ -1,0 +1,29 @@
+{
+  "image_id": "ca40decc",
+  "model": "Model_I",
+  "substructure_type": "cdm",
+  "timestamp": "2026-03-22 19:44:19.255553",
+  "z_lens": 0.3553732036940149,
+  "z_source": 1.3521723973074458,
+  "theta_E": 0.7239275397351064,
+  "e1_lens": -0.18296271238699588,
+  "e2_lens": -0.10790676982156269,
+  "gamma_ext": 0.04087738803821111,
+  "source_x": -0.029527266716986546,
+  "source_y": -0.05576943194520756,
+  "image_shape": [
+    64,
+    64
+  ],
+  "pixel_scale": 0.08,
+  "snr_estimate": 282.04957932731395,
+  "einstein_ring_radius_px": 9.04909424668883,
+  "peak_flux": 2688.058837890625,
+  "mean_flux": 194.1292724609375,
+  "num_subhalos": 20,
+  "num_vortices": null,
+  "axion_mass_log10_eV": null,
+  "random_seed": null,
+  "simulation_time_sec": 0.0172865480000155,
+  "lenstronomy_version": "1.13.5"
+}

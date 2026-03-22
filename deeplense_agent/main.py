@@ -54,15 +54,22 @@ def _contains_question(text: str) -> bool:
 
 
 def _extract_questions(text: str) -> list[str]:
-    """Pull out lines that look like genuine questions, ignoring tool call artifacts."""
-    return [
-        line.strip()
-        for line in text.splitlines()
-        if "?" in line
-        and line.strip()
-        and not line.strip().startswith("<function")
-        and not line.strip().startswith("```")
-    ]
+    """Pull out lines that look like genuine questions, ignoring tool call artifacts.
+    Deduplicates so the same question is never shown twice."""
+    seen = set()
+    questions = []
+    for line in text.splitlines():
+        stripped = line.strip()
+        if (
+            "?" in stripped
+            and stripped
+            and not stripped.startswith("<function")
+            and not stripped.startswith("```")
+            and stripped not in seen
+        ):
+            seen.add(stripped)
+            questions.append(stripped)
+    return questions
 
 
 # Known parameter options for numbered menu display
@@ -134,19 +141,32 @@ async def run_agent_loop(
 
         response_text = str(result.output)
 
-        # Groq occasionally leaks raw tool call syntax as plain text — ignore it
-        # and retry rather than showing it to the user
-        if response_text.strip().startswith("<function="):
+        # Strip any raw function call lines Groq leaks into the response
+        clean_lines = [
+            line for line in response_text.splitlines()
+            if not line.strip().startswith("<function=")
+        ]
+        response_text = "\n".join(clean_lines).strip()
+
+        # Groq occasionally outputs ONLY a raw tool call — retry
+        if response_text.strip().startswith("<function=") or not response_text:
             if round_num < max_rounds:
-                current_prompt = "Please do not output raw function call syntax. Execute the tools properly and give me a plain text response."
+                current_prompt = "Please do not output raw function call syntax. Give me a plain text response."
                 continue
             else:
                 print("\n  ⚠️  Agent encountered an internal error. Please try again.\n")
                 break
+
         message_history = result.all_messages()
 
-        # Check if agent is asking clarifying questions
-        if interactive and round_num < max_rounds and _contains_question(response_text):
+        # If validation already failed, prefix with ❌ and stop immediately
+        if "invalid parameters" in response_text.lower() or "must be greater" in response_text.lower():
+            _display_result("❌  " + response_text)
+            break
+
+        # Only ask clarifying questions on the very first round before any
+        # simulation has run. After round 0 always show the final response.
+        if interactive and round_num == 0 and _contains_question(response_text):
             questions = _extract_questions(response_text)
 
             # Show what the agent said
@@ -167,9 +187,9 @@ def main() -> None:
         description="DeepLenseSim Agent — NL-driven strong lensing simulation"
     )
     parser.add_argument("--prompt", type=str, default=None)
-    parser.add_argument("--output-dir", type=Path, default=Path("deeplense_agent/outputs"))
+    parser.add_argument("--output-dir", type=Path, default=Path(__file__).parent / "outputs")
     parser.add_argument("--no-interactive", action="store_true")
-    parser.add_argument("--max-rounds", type=int, default=3)
+    parser.add_argument("--max-rounds", type=int, default=2)
     args = parser.parse_args()
 
     _print_banner()
